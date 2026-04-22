@@ -119,12 +119,21 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 환경 설정 (실제 배포 시 Firebase 설정값 입력 필요)
-        let firebaseConfig = {};
-        let db, appId = "default-app-id";
+        // 🌟 [중요] 3단계에서 복사한 선생님의 Firebase 설정값을 아래 빈칸에 붙여넣어 주세요! 🌟
+        const firebaseConfig = {
+          apiKey: "AIzaSyDKu7xDkGfQGKSP2FmBemZBxrpmTuaPMZk",
+          authDomain: "school-calendar-a7fa5.firebaseapp.com",
+          projectId: "school-calendar-a7fa5",
+          storageBucket: "school-calendar-a7fa5.firebasestorage.app",
+          messagingSenderId: "835453443940",
+          appId: "1:835453443940:web:fea322472985704f422471"
+        };
+
+        let db;
+        let appId = "school-cal-2026"; // 데이터베이스 고유 저장소 이름
         let memos = {};
         let currentMonth = 4;
         let selectedDay = null;
@@ -137,11 +146,9 @@
         document.body.appendChild(statusBadge);
 
         async function init() {
-            // LMDX 환경(실시간 동기화) 확인
-            if (typeof __firebase_config !== 'undefined') {
-                firebaseConfig = JSON.parse(__firebase_config);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'school-cal';
-                
+            // 사용자가 firebaseConfig에 apiKey를 제대로 넣었는지 확인
+            if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey) {
+                // 실시간 동기화(클라우드) 모드 활성화
                 const app = initializeApp(firebaseConfig);
                 const auth = getAuth(app);
                 db = getFirestore(app);
@@ -149,11 +156,8 @@
                 statusBadge.innerText = "☁️ 실시간 협업 중";
                 statusBadge.classList.add('bg-green-100', 'text-green-700');
                 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // 익명 로그인으로 누구나 접근 가능하게 설정
+                await signInAnonymously(auth);
 
                 // 실시간 리스너 연결
                 const memosRef = collection(db, 'artifacts', appId, 'public', 'data', 'memos');
@@ -165,7 +169,8 @@
                     console.error("Firestore 데이터 동기화 에러:", error);
                 });
             } else {
-                statusBadge.innerText = "💾 로컬 저장 모드";
+                // 파이어베이스 설정이 비어있으면 로컬 저장 모드로 동작
+                statusBadge.innerText = "💾 로컬 저장 모드 (Firebase 설정 필요)";
                 statusBadge.classList.add('bg-slate-200', 'text-slate-600');
                 const saved = localStorage.getItem('hs_collab_memos');
                 if (saved) memos = JSON.parse(saved);
@@ -227,10 +232,12 @@
             const text = document.getElementById('memoInput').value.trim();
             
             if (db) {
+                // 클라우드 모드: Firebase에 저장
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'memos', dateKey);
                 if (text) await setDoc(docRef, { text });
                 else await deleteDoc(docRef);
             } else {
+                // 로컬 모드: 브라우저에 저장
                 if (text) memos[dateKey] = text; else delete memos[dateKey];
                 localStorage.setItem('hs_collab_memos', JSON.stringify(memos));
                 renderCalendar();
